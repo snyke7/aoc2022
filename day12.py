@@ -1,4 +1,4 @@
-from typing import Tuple, Dict, List
+from typing import Tuple, Dict, List, TypeVar
 
 
 test_grid = '''Sabqponm
@@ -63,7 +63,10 @@ def read_graph(grid_str: str) -> Tuple[Dict[Tuple[int, int], List[Tuple[int, int
     return grid_to_graph(grid), start, end
 
 
-def dijkstra(graph: Dict[Tuple[int, int], List[Tuple[int, int]]], start: Tuple[int, int]) -> Dict[Tuple[int, int], int]:
+A = TypeVar('A')
+
+
+def dijkstra(graph: Dict[A, List[A]], start: A) -> Dict[A, int]:
     result = {start: 0}
     new = [start]
     while new:
