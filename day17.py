@@ -44,18 +44,13 @@ def add_rock(jets: Generator[int, None, None], rock: Rock, filled: Set[Coord]):
     highest = get_highest(filled)
     dx = highest - 4
     dy = 2
-    print(stack_to_str(filled.union(rock.as_filled(dx, dy))))
     while True:
         ddy = next(jets)
         if not rock.overlaps(filled, dx, dy + ddy):
             dy += ddy
-        print(stack_to_str(filled.union(rock.as_filled(dx, dy))))
         if rock.overlaps(filled, dx + 1, dy):  # stop at current position
-            print(f'breaking at {dx, dy}')
             break
         dx += 1
-        print(stack_to_str(filled.union(rock.as_filled(dx, dy))))
-    print()
     filled.update(rock.as_filled(dx, dy))
 
 
@@ -88,14 +83,12 @@ def stack_to_str(filled: Set[Coord]):
 
 def main():
     test_input = '>>><<><>><<<>><>>><<<>>><<<><<<>><>><<>>\n'
-    the_input = test_input
-    jets = input_to_jets(the_input)
-    interm = drop_rocks(jets, 9)
-    print(stack_to_str(interm))
-    print()
-    tenth = interm.copy()
-    add_rock(jets, rocks[-1], tenth)
-    print(stack_to_str(tenth))
+    with open('input/day17_input.txt') as f:
+        file_input = f.read()
+    the_input = file_input
+    jets = input_to_jets(the_input.strip())
+    stack = drop_rocks(jets, 2022)
+    print(get_highest(stack))
     pass
 
 
