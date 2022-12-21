@@ -3,7 +3,7 @@ from typing import List, Optional, Generator, Tuple
 from attrs import define
 
 
-test_input = '''7
+test_input = '''1
 2
 -3
 3
@@ -84,7 +84,10 @@ class CircularList:
 
     def move_value(self, value: int):
         _, node = self.find(value)
-        to_move = node.val % (self.length - 1)  # now always in positive direction!
+        self.move_node(node, value)
+
+    def move_node(self, node: CircularListNode, amt):
+        to_move = amt % (self.length - 1)  # now always in positive direction!
         # but -1 =%= self.length - 1 - 1
         if abs(to_move) > abs(to_move - (self.length - 1)):
             to_move -= self.length - 1
@@ -99,6 +102,18 @@ class CircularList:
         # idx now points to oldnext
         # so idx + value now points to newnext
         new_next = self[idx + value]
+        node.insert_between(new_next.prev, new_next)
+        self.length += 1
+
+    def move_node_fast(self, node: CircularListNode, amt):
+        idx = next((i for i, nd in enumerate(self) if nd == node))
+        if idx == 0:
+            self.first = node.next
+        node.detach()
+        self.length -= 1
+        # idx now points to oldnext
+        # so idx + value now points to newnext
+        new_next = self[idx + amt]
         node.insert_between(new_next.prev, new_next)
         self.length += 1
 
@@ -128,16 +143,17 @@ def to_circular_list(array: List[int]) -> Optional[CircularList]:
 
 
 def mix(clist: CircularList):
-    for v in clist.as_val_list():
-        clist.move_value_fast(v)
+    for node in list(clist):
+        clist.move_node(node, node.val)
         # print(clist.as_val_list())
     return clist
 
 
 def mix_both(clist: CircularList):
     clist2 = clist.copy()
-    to_rep = list(enumerate(clist.as_val_list()))
-    for i, v in to_rep:
+    lnodes = list(clist)
+    rnodes = list(clist)
+    for i in range(len(lnodes)):
         list1 = clist.as_val_list_from(0)
         list2 = clist2.as_val_list_from(0)
         print(list1)
@@ -145,9 +161,9 @@ def mix_both(clist: CircularList):
             print()
             print(list2)
             print()
-            raise ValueError(f'bad code after {i}: {v}')
-        clist.move_value(v)
-        clist2.move_value_fast(v)
+            raise ValueError(f'bad code after {i}')
+        clist.move_node(lnodes[i], lnodes[i].val)
+        clist.move_node_fast(rnodes[i], rnodes[i].val)
     return clist
 
 
@@ -160,17 +176,33 @@ def get_coord_sum(clist: CircularList) -> int:
     return num1 + num2 + num3
 
 
+DECRYPTION_KEY = 811589153
+
+
+def mix_pt2(array: List[int]):
+    clist = to_circular_list([el * DECRYPTION_KEY for el in array])
+    nodes = list(clist)
+    for _ in range(10):
+        for node in nodes:
+            clist.move_node(node, node.val)
+    return clist
+
+
 def main():
     with open('input/day20_input.txt') as f:
         file_input = f.read()
     the_input = file_input
     array = list(map(int, the_input.splitlines(False)))
-    array = array[0:200]
-    array[-2] = 0
+    # array = array[0:200]
+    # array[-2] = 0
     clist = to_circular_list(array)
-    mix_both(clist)
+    mix(clist)
     print('done mixing')
     print(get_coord_sum(clist))
+    clist2 = mix_pt2(array)
+    print('done mixing pt2')
+    print(get_coord_sum(clist2))
+    # this takes about 10 seconds. we'd need a true skiplist for actual efficiency, but screw that
 
 
 if __name__ == '__main__':
