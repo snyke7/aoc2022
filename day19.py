@@ -1,6 +1,5 @@
 from typing import Tuple, List
 
-
 Cost = Tuple[int, int, int]
 Robots = List[int]
 
@@ -23,36 +22,44 @@ def increase_inv_with(inventory: Cost, robot_count: Robots) -> Cost:
     return tuple((i + r) for i, r in zip(inventory, robot_count))
 
 
-def max_geodes(blueprint: Blueprint, minutes: int, inventory: Cost, robot_count: Robots) -> int:
+def max_geodes(blueprint: Blueprint, minutes: int, inventory: Cost, robot_count: Robots, at_least=0) -> int:
     if minutes == 0:
         return 0
     # given any situation, the best one can do is produce a geode-cracker every minute
     # this would produce cur_geocrackers * minutes + minutes * (minutes - 1) // 2
     # but this assumes that one has enough resources, and geode-crackers are expensive
 
+    if not (estimate_v3_conv(minutes, robot_count, inventory, blueprint) > at_least):
+        return at_least
+
     # an additional heuristic: never produce a robot which is already producing more ore than we can consume
     result = 0
-    am_poor = False
-    for robot, robot_cost in enumerate(blueprint):
+    to_poor_for = []
+    for robot, robot_cost in reversed(list(enumerate(blueprint))):
         reduced_inv: Cost = tuple((i - c for i, c in zip(inventory, robot_cost)))
         if all((i >= 0 for i in reduced_inv)) and (
-            robot == len(blueprint) - 1 or
-            robot_count[robot] + 1 <= max((cost[robot] for cost in blueprint))
+                robot == len(blueprint) - 1 or
+                robot_count[robot] + 1 <= max((cost[robot] for cost in blueprint[robot:]))
         ):
             # we can construct one, and its ores are possibly useful
             reduced_inv = increase_inv_with(reduced_inv, robot_count)
+            additional_geodes = robot_count[-1]
             robot_count[robot] += 1
-            that_result = max_geodes(blueprint, minutes - 1, reduced_inv, robot_count)
-            if minutes >= 10:
-                print(f'Built robot {robot} (total: {robot_count}, inv: {inventory}) with {minutes} minutes left: {that_result}')
+            that_result = max_geodes(blueprint, minutes - 1, reduced_inv, robot_count, at_least - additional_geodes) + additional_geodes
+            # if minutes >= 12 or True:
+            #     print(
+            #         f'Built robot {robot} (total: {robot_count}, inv: {inventory}) with {minutes} minutes left: {that_result}')
             robot_count[robot] -= 1
             if that_result > result:
                 result = that_result
+            if result > at_least:
+                at_least = result
         else:
-            am_poor = True
-    if am_poor:
+            to_poor_for.append(robot)
+    if to_poor_for:
         # base case: construct no robots. this is only a good option if there is a robot we cannot build
-        wait_result = max_geodes(blueprint, minutes - 1, increase_inv_with(inventory, robot_count), robot_count) + robot_count[-1]  # geode-crackers
+        wait_result = max_geodes(blueprint, minutes - 1, increase_inv_with(inventory, robot_count), robot_count, at_least - robot_count[-1]) + \
+                      robot_count[-1]  # geode-crackers
         if wait_result > result:
             result = wait_result
     return result
@@ -161,14 +168,47 @@ def estimate_v3(minutes: int,
     return result
 
 
+def estimate_v3_conv(minutes: int,
+                     robot_count: Robots,
+                     inventory: Cost,
+                     blueprint: Blueprint) -> int:
+    ore_miners, clay_miners, obs_miners, geocrackers = robot_count
+    cur_ore, cur_clay, cur_obs = inventory
+    obs_cost = blueprint[3][2]
+    clay_cost = blueprint[2][1]
+    ore_cost = blueprint[1][0]
+    return estimate_v3(minutes, geocrackers, cur_obs, obs_cost, obs_miners, cur_clay, clay_cost, clay_miners, cur_ore, ore_cost, ore_miners)
+
+
+def max_geodes_init(blueprint):
+    return max_geodes(blueprint, 24, (0, 0, 0), [1, 0, 0, 0])
+
+
+def total_quality(blueprints: List[Blueprint]):
+    return sum(((i + 1) * max_geodes_init(blueprint) for i, blueprint in enumerate(blueprints)))
+
+
+def max_geodes_init_pt2(blueprint):
+    return max_geodes(blueprint, 32, (0, 0, 0), [1, 0, 0, 0])
+
+
+def prod_of_first_three(blueprints):
+    result = 1
+    for blueprint in blueprints[:3]:
+        result *= max_geodes_init_pt2(blueprint)
+    return result
+
+
 def main():
-    the_input = test_input
+    with open('input/day19_input.txt') as f:
+        file_input = f.read()
+    the_input = file_input
     blueprints = [parse_blueprint(line.strip()) for line in the_input.splitlines()]
-    print(blueprints)
-    # print(max_geodes(blueprints[0], 24, (0, 0, 0), [1, 0, 0, 0]))
-    print(estimate_v1(11, 0, 0, 0, 7))
-    print(estimate_v2(10, 0, 0, 7, 0, 33, 14, 6))
-    print(estimate_v3(10, 0, 0, 7, 0, 32, 14, 6, 4, 2, 2))
+    print(total_quality(blueprints))
+    print(prod_of_first_three(blueprints))
+    # print(estimate_v1(11, 0, 0, 0, 7))
+    # print(estimate_v2(10, 0, 0, 7, 0, 33, 14, 6))
+    # print(estimate_v3(10, 0, 0, 7, 0, 32, 14, 6, 4, 2, 2))
 
 
 if __name__ == '__main__':
